@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Attendance Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background-color: #6B1D1D;
+            color: white;
+            padding: 20px;
+        }
+        h2 {
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        #reader {
+            width: 300px;
+            margin: auto;
+            display: none; /* Hidden initially */
+            border: 2px solid #fff;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .input-group {
+            margin: 10px;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 250px;
+            border: none;
+            border-radius: 5px;
+            outline: none;
+        }
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #FFD700;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #ffcc00;
+        }
+        #stopScanner {
+            display: none;
+            background-color: #FF4444;
+        }
+        #stopScanner:hover {
+            background-color: #FF2222;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>📚 Teacher Attendance Scanner</h2>
+
+    <div class="container">
+        <button id="startScanner">📷 Start Scanner</button>
+        <button id="stopScanner">🛑 Stop Scanner</button>
+        <div id="reader"></div>
+
+        <div class="input-group">
+            <input type="text" id="classroom" placeholder="Scanned Classroom" readonly>
+        </div>
+        <div class="input-group">
+            <input type="text" id="teacherName" placeholder="Enter Your Name">
+        </div>
+        <button id="submitAttendance">✅ Submit Attendance</button>
+    </div>
+
+    <script>
+        let scanner;
+        let scannerActive = false;
+
+        document.getElementById("startScanner").addEventListener("click", function () {
+            if (scannerActive) return; // Prevent multiple instances
+            scannerActive = true;
+
+            document.getElementById("reader").style.display = "block";
+            document.getElementById("stopScanner").style.display = "inline-block";
+
+            scanner = new Html5Qrcode("reader");
+
+            scanner.start(
+                { facingMode: "environment" }, // Use back camera
+                { fps: 10, qrbox: 250 },
+                function (decodedText) {
+                    document.getElementById("classroom").value = decodedText;
+                    stopScanner(); // Stop scanner after successful scan
+                },
+                function (errorMessage) {
+                    console.log("QR Scan Error:", errorMessage);
+                }
+            ).catch(err => {
+                alert("⚠️ Camera access failed. Please allow camera permissions.");
+                console.error("Camera Error:", err);
+                stopScanner();
+            });
+        });
+
+        document.getElementById("stopScanner").addEventListener("click", stopScanner);
+
+        function stopScanner() {
+            if (scanner) {
+                scanner.stop().then(() => {
+                    console.log("Scanner stopped.");
+                }).catch(err => console.log("Error stopping scanner:", err));
+            }
+            scannerActive = false;
+            document.getElementById("reader").style.display = "none";
+            document.getElementById("stopScanner").style.display = "none";
+        }
+
+        document.getElementById("submitAttendance").addEventListener("click", function () {
+            const classroom = document.getElementById('classroom').value;
+            const teacherName = document.getElementById('teacherName').value;
+            const submitButton = document.getElementById("submitAttendance");
+
+            if (!classroom || !teacherName) {
+                alert("⚠️ Please scan a QR code and enter your name.");
+                return;
+            }
+
+            submitButton.disabled = true; // Prevent multiple submissions
+            submitButton.innerText = "⏳ Submitting...";
+
+            const timestamp = new Date().toISOString();
+
+            fetch('https://script.google.com/macros/s/AKfycbwdCOKMC3U2y10d3UDtNZZpNdCbCnNoRQi1DPTcWx8WgduVKC2eMG8oxdGCkSkkIenC/exec', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ classroom, teacherName, timestamp })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("✅ Attendance recorded successfully!");
+                submitButton.disabled = false;
+                submitButton.innerText = "✅ Submit Attendance";
+            })
+            .catch(error => {
+                alert("❌ Error recording attendance.");
+                submitButton.disabled = false;
+                submitButton.innerText = "✅ Submit Attendance";
+            });
+        });
+    </script>
+
+</body>
+</html>
